@@ -13,6 +13,7 @@ import java.io.IOException;
 
 public class App extends Application {
 
+    public static mainScreenController controller;
     private final String startUrl = "/FxmlFiles/MainScreen.fxml";
     private Scene startScene;
     public String getGreeting() {
@@ -27,7 +28,7 @@ public class App extends Application {
     public void start(Stage primaryStage) throws Exception {
         try {
             FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource(startUrl));
-            fxmlLoader.setControllerFactory(c -> new mainScreenController()); // Set controller factory
+            fxmlLoader.setControllerFactory(c -> setMainScreenController()); // Set controller factory
             Parent startRoot = fxmlLoader.load();
             startScene = new Scene(startRoot);
 
@@ -37,5 +38,11 @@ public class App extends Application {
         }
         primaryStage.setScene(startScene);
         primaryStage.show();
+    }
+
+
+    private mainScreenController setMainScreenController(){
+        controller = new mainScreenController();
+        return controller;
     }
 }

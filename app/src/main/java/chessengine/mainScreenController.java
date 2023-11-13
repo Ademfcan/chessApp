@@ -5,18 +5,24 @@ import javafx.fxml.Initializable;
 import javafx.geometry.HPos;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.shape.Rectangle;
 
 import java.net.URL;
+import java.text.DecimalFormat;
 import java.util.List;
 import java.util.ResourceBundle;
 
 public class mainScreenController implements Initializable {
 
+    public boolean isWhiteTurn = true;
     Boolean peiceSelected = false;
     // 1 = white, -1 = black x , y coords
     int[] selectedPeiceInfo = {0, 0, 0};
@@ -26,7 +32,15 @@ public class mainScreenController implements Initializable {
 
     String highlightColor = "";
     StackPane[][] Bgpanes = new StackPane[8][8];
-    ImageView[][] peicesAtLocations = new ImageView[8][8];
+    public ImageView[][] peicesAtLocations = new ImageView[8][8];
+
+    @FXML
+    Button LeftButton;
+
+    @FXML
+    Button RightButton;
+
+
 
     @FXML
     ComboBox bgColorSelector;
@@ -38,8 +52,32 @@ public class mainScreenController implements Initializable {
     GridPane chessBgBoard;
 
     @FXML
-    GridPane chessPieceBoard;
-    coordinateHandler handler;
+    public GridPane chessPieceBoard;
+
+
+
+
+
+    @FXML
+    public Label saveIndicator;
+
+    @FXML
+    public Button reset;
+
+    @FXML
+    Rectangle blackadvantage;
+
+    @FXML
+    Label blackEval;
+
+    @FXML
+    Rectangle whiteadvantage;
+
+    @FXML
+    Label whiteEval;
+
+    @FXML
+    StackPane barContainer;
 
     pieceLocationHandler peiceHandler;
 
@@ -47,7 +85,9 @@ public class mainScreenController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         chessPieceBoard.setMouseTransparent(true);
         peiceHandler = new pieceLocationHandler();
-
+        barContainer.prefHeightProperty().bind(chessPieceBoard.heightProperty());
+        whiteadvantage.heightProperty().bind(chessPieceBoard.heightProperty().divide(2));
+        blackadvantage.heightProperty().bind(chessPieceBoard.heightProperty().divide(2));
         bgColorSelector.getItems().addAll(
                 "Traditional",
                 "Ice", "Halloween", "Summer"
@@ -71,10 +111,78 @@ public class mainScreenController implements Initializable {
         changeChessBg("Traditional");
         setUpChessPieces(chessPieceBoard);
 
+        LeftButton.setOnMouseClicked(e -> {
+            if(peiceHandler.moveIndx >= 0){
+                peiceHandler.updateMoveIndex(-1);
+                peiceHandler.ChangeBoard(chessPieceBoard,peicesAtLocations,isWhiteTurn);
+                saveIndicator.setText((peiceHandler.moveIndx + 1) + "/" + (peiceHandler.maxIndex+1));
+                setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
+
+
+            }
+
+
+        });
+
+        RightButton.setOnMouseClicked(e -> {
+            if(peiceHandler.moveIndx < peiceHandler.maxIndex){
+                peiceHandler.updateMoveIndex(1);
+                peiceHandler.ChangeBoard(chessPieceBoard,peicesAtLocations,isWhiteTurn);
+                saveIndicator.setText((peiceHandler.moveIndx + 1) + "/" + (peiceHandler.maxIndex+1));
+                setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
+
+
+            }
+        });
+
+
     }
 
+    private void setEvalBar(Label whiteEval, Label blackEval, Rectangle whiteBar, Rectangle blackBar, double advantage){
+        double barModPercent = passThroughAsymptote(Math.abs(advantage))/5;
+        DecimalFormat decimalFormat = new DecimalFormat("#.#");
+        System.out.println(advantage);
+        whiteEval.setText("Helloooo");
+        if(advantage >= 0){
+            // white advantage or equal position
+            whiteEval.setText(decimalFormat.format(advantage));
+            blackEval.setText("");
+            whiteBar.heightProperty().bind(chessPieceBoard.heightProperty().divide(2).add(chessPieceBoard.heightProperty().divide(2).multiply(barModPercent)));
+            blackBar.heightProperty().bind(chessPieceBoard.heightProperty().divide(2).multiply(1-barModPercent));
+            
+        }
+        else{
+            System.out.println("here");
+            blackEval.setText(decimalFormat.format(advantage));
+            whiteEval.setText("");
+            blackBar.heightProperty().bind(chessPieceBoard.heightProperty().divide(2).add(chessPieceBoard.heightProperty().divide(2).multiply(barModPercent)));
+            whiteBar.heightProperty().bind(chessPieceBoard.heightProperty().divide(2).multiply(1-barModPercent));
 
+
+        }
+
+
+    }
+
+    private double passThroughAsymptote(double advantage){
+        return (5 * Math.pow(advantage,2))/(Math.pow(advantage,2)+0.5*advantage + 10);
+    }
+
+    public void unselectEveryThing()
+    {
+        peiceSelected = false;
+        if(oldHighights != null){
+            for(String s : oldHighights){
+                String[] coords = s.split(",");
+                int a = Integer.parseInt(coords[0]);
+                int b = Integer.parseInt(coords[1]);
+                removeHiglight(a,b);
+            }
+        }
+
+    }
     private void changeChessBg(String colorType) {
+
         boolean isLight = true;
         highlightColor = colorType;
         String[] clrStr = getColorStr(colorType);
@@ -166,13 +274,14 @@ public class mainScreenController implements Initializable {
                         }
                     }
                     ImageView piece = new ImageView("/ChessAssets/ChessPieces/" + pathStart + restOfPath + "_1x_ns.png");
+                    piece.fitHeightProperty().bind(chessPieceBoard.heightProperty().divide(9));
+                    piece.fitWidthProperty().bind(chessPieceBoard.widthProperty().divide(8));
+                    piece.setPreserveRatio(true);
 
-                    piece.setFitHeight(32);
-                    piece.setFitWidth(32);
 
 
-                    board.setHalignment(piece, HPos.CENTER);
-                    board.setValignment(piece, VPos.CENTER);
+                    GridPane.setHalignment(piece, HPos.CENTER);
+                    GridPane.setValignment(piece, VPos.CENTER);
 
 
                     board.add(piece, pieceX, pieceY);
@@ -192,18 +301,21 @@ public class mainScreenController implements Initializable {
             pieceY = 1;
             isPawn = true;
             isWhite = false;
+
         }
     }
 
 
+
     private void setUpSquareClickEvent(StackPane square) {
         square.setOnMouseClicked(event -> {
+
             StackPane pane = (StackPane) event.getSource();
             String[] xy = pane.getUserData().toString().split(",");
             int x = Integer.parseInt(xy[0]);
             int y = Integer.parseInt(xy[1]);
-            System.out.println("X: " + x);
-            System.out.println("Y: " + y);
+            //System.out.println("X: " + x);
+            //System.out.println("Y: " + y);
             if (event.getButton() == MouseButton.PRIMARY) {
 
                 boolean[] boardInfo = peiceHandler.checkIfContains(x, y);
@@ -215,8 +327,8 @@ public class mainScreenController implements Initializable {
                     boolean prevPeiceClr = (selectedPeiceInfo[2] > 0);
                     int oldX = selectedPeiceInfo[0];
                     int oldY = selectedPeiceInfo[1];
-                    System.out.println(prevPeiceClr);
-                    System.out.println(boardInfo[1]);
+                    //System.out.println(prevPeiceClr);
+                    //System.out.println(boardInfo[1]);
                     if (!boardInfo[0] || prevPeiceClr != boardInfo[1]) {
                         // enemy colors or empty square
 
@@ -230,22 +342,30 @@ public class mainScreenController implements Initializable {
                             }
 
 
+
+                            peiceHandler.movePiece(prevPeiceClr,oldX,oldY,x,y,boardInfo[0]);
                             if(boardInfo[0]){
                                 // remove enemy peice
                                 peiceHandler.removePeice(boardInfo[1],x,y);
                                 chessPieceBoard.getChildren().remove(peicesAtLocations[x][y]);
 
                             }
-                            peiceHandler.movePiece(prevPeiceClr,oldX,oldY,x,y);
                             removeHiglight(oldX, oldY);
+                            peicesAtLocations[oldX][oldY] = null;
+
+
 
                             GridPane.setRowIndex(selectedPeice,y);
                             GridPane.setColumnIndex(selectedPeice,x);
                             peicesAtLocations[x][y] = selectedPeice;
                             peiceSelected = false;
 
+                            isWhiteTurn = !isWhiteTurn;
+                            saveIndicator.setText((peiceHandler.moveIndx + 1) + "/" + (peiceHandler.maxIndex+1));
 
                             oldHighights = null;
+                            setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
+
                         }
 
 
@@ -253,7 +373,7 @@ public class mainScreenController implements Initializable {
                     else {
                         // your own peice color
                         //System.out.println("Own color");
-                        System.out.println(peiceHandler.getPieceType(x,y,boardInfo[1]));
+                        //System.out.println(peiceHandler.getPieceType(x,y,boardInfo[1]));
 
                         int clr = (boardInfo[1]) ? 1 : -1;
                         selectedPeiceInfo[0] = x;
@@ -305,31 +425,33 @@ public class mainScreenController implements Initializable {
                     }
                 else if(boardInfo[0]){
                     // no prev selection
-                    System.out.println(peiceHandler.getPieceType(x,y,boardInfo[1]));
+                    if(boardInfo[1] == isWhiteTurn){
+                        //System.out.println(peiceHandler.getPieceType(x,y,boardInfo[1]));
 
-                    List<String> moves = peiceHandler.getPossibleMoves(x,y,boardInfo[1]);
-                    oldHighights = moves;
-                    for(String s : moves){
-                        String[] coords = s.split(",");
-                        int a = Integer.parseInt(coords[0]);
-                        int b = Integer.parseInt(coords[1]);
-                        highlightSquare(a,b,false);
+                        List<String> moves = peiceHandler.getPossibleMoves(x,y,boardInfo[1]);
+                        oldHighights = moves;
+                        for(String s : moves){
+                            String[] coords = s.split(",");
+                            int a = Integer.parseInt(coords[0]);
+                            int b = Integer.parseInt(coords[1]);
+                            highlightSquare(a,b,false);
+                        }
+
+
+
+                        peiceSelected = true;
+
+                        int clr = (boardInfo[1]) ? 1 : -1;
+                        selectedPeiceInfo[0] = x;
+                        selectedPeiceInfo[1] = y;
+                        selectedPeiceInfo[2] = clr;
+                        selectedPeice = peicesAtLocations[x][y];
+
+
+
+
+                        highlightSquare(x, y, true);
                     }
-
-
-
-                    peiceSelected = true;
-
-                    int clr = (boardInfo[1]) ? 1 : -1;
-                    selectedPeiceInfo[0] = x;
-                    selectedPeiceInfo[1] = y;
-                    selectedPeiceInfo[2] = clr;
-                    selectedPeice = peicesAtLocations[x][y];
-
-
-
-
-                    highlightSquare(x, y, true);
 
                 }
                 if(peiceSelected){
