@@ -90,7 +90,7 @@ public class mainScreenController implements Initializable {
         blackadvantage.heightProperty().bind(chessPieceBoard.heightProperty().divide(2));
         bgColorSelector.getItems().addAll(
                 "Traditional",
-                "Ice", "Halloween", "Summer"
+                "Ice", "Halloween", "Summer","Cherry"
         );
         bgColorSelector.setOnAction(e -> {
             changeChessBg(bgColorSelector.getValue().toString());
@@ -132,6 +132,16 @@ public class mainScreenController implements Initializable {
                 setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
 
 
+            }
+        });
+
+        reset.setOnMouseClicked(e ->{
+            if(peiceHandler.moveIndx != -1){
+                peiceHandler.moveIndx = -1;
+                peiceHandler.ChangeBoard(chessPieceBoard,peicesAtLocations,isWhiteTurn);
+                saveIndicator.setText("0/0");
+                peiceHandler.clearIndx();
+                setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
             }
         });
 
@@ -225,6 +235,7 @@ public class mainScreenController implements Initializable {
             case "Traditional" -> new String[]{"#9e7a3a", "#2e120b"};
             case "Halloween" -> new String[]{"#ff6619", "#241711"};
             case "Summer" -> new String[]{"#f7cc0a", "#22668D"};
+            case "Cherry" -> new String[]{"#f7b2ad", "#8c2155"};
             default -> null;
         };
     }
@@ -333,13 +344,34 @@ public class mainScreenController implements Initializable {
                         // enemy colors or empty square
 
                         //System.out.println("Moving " + prevPeiceClr + " peice from " + oldX + "," + oldY + " to " + x + "," + y);
-                        if(checkIfMovePossible(oldHighights,x,y)){
+                        boolean[] moveInfo = checkIfMovePossible(oldHighights,x,y);
+                        if(moveInfo[0]){
                             for(String s : oldHighights){
                                 String[] coords = s.split(",");
                                 int a = Integer.parseInt(coords[0]);
                                 int b = Integer.parseInt(coords[1]);
                                 removeHiglight(a,b);
                             }
+                            if(moveInfo[1]){
+                                // performing castling move
+                                int jump = x == 6? 1 : -1;
+                                peiceHandler.removeRookMoveRight(x+jump, y);
+                                peiceHandler.movePiece(prevPeiceClr,x+jump,y,x-jump,y,true);
+                                peicesAtLocations[x-jump][y] = peicesAtLocations[x+jump][y];
+                                GridPane.setRowIndex(peicesAtLocations[x-jump][y],y);
+                                GridPane.setColumnIndex(peicesAtLocations[x-jump][y],x-jump);
+                                peicesAtLocations[x+jump][y] = null;
+                                peiceHandler.removeCastlingRight(prevPeiceClr);
+                                System.out.println("Castle right black: " + peiceHandler.blackCastleRight);
+                                System.out.println("Short rook black: " + peiceHandler.blackShortRookMove);
+
+                            }
+                            if(peiceHandler.getPieceType(oldX,oldY,prevPeiceClr).equals("King")){
+                                peiceHandler.removeCastlingRight(prevPeiceClr);
+
+                            }
+
+
 
 
 
@@ -491,16 +523,25 @@ public class mainScreenController implements Initializable {
 
     }
 
-    private boolean checkIfMovePossible(List<String> moves, int x, int y){
+    private boolean[] checkIfMovePossible(List<String> moves, int x, int y){
         // todo: change this to bitboard logic
         for(String s : moves){
             String[] coords = s.split(",");
             int a = Integer.parseInt(coords[0]);
             int b = Integer.parseInt(coords[1]);
-            if(a == x && b == y){
-                return true;
+            boolean isCastle =false;
+            if(coords.length > 2){
+                 isCastle = coords[2].equals("c");
+            }
+
+
+            if(a == x && b == y && isCastle){
+                return new boolean[]{true,true};
+            }
+            else if(a == x && b == y){
+                return new boolean[]{true,false};
             }
         }
-        return false;
+        return new boolean[]{false,false};
     }
 }

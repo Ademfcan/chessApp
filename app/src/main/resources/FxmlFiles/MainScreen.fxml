@@ -22,7 +22,7 @@
         <RowConstraints percentHeight="85.0" vgrow="ALWAYS" />
     </rowConstraints>
    <children>
-      <StackPane prefHeight="-Infinity" prefWidth="-Infinity" GridPane.hgrow="ALWAYS" GridPane.rowSpan="2" GridPane.vgrow="ALWAYS">
+      <StackPane prefHeight="-Infinity" prefWidth="-Infinity" style="-fx-border-width: 6px; -fx-border-color: white;" GridPane.hgrow="ALWAYS" GridPane.rowSpan="2" GridPane.vgrow="ALWAYS">
          <children>
             <GridPane fx:id="chessBoard">
               <columnConstraints>

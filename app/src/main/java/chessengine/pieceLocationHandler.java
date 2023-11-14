@@ -45,6 +45,24 @@ public class pieceLocationHandler {
     public int moveIndx = -1;
     public int maxIndex = -1;
 
+    private int blackCastleIndx = 1000;
+    private int whiteCastleIndx = 1000;
+
+    private boolean whiteCastleRight = true;
+    public boolean blackCastleRight = true;
+
+    private boolean whiteShortRookMove = true;
+    private boolean whiteLongRookMove = true;
+    public boolean blackShortRookMove = true;
+    private boolean blackLongRookMove = true;
+
+    private int whiteShortRookIndx = 1000;
+    private int whiteLongRookIndx = 1000;
+    private int blackShortRookIndx = 1000;
+    private int blackLongRookIndx = 1000;
+
+
+
     public pieceLocationHandler() {
     }
 
@@ -426,7 +444,22 @@ public class pieceLocationHandler {
     }
 
     private List<String> calculateKingMoves(int x, int y, boolean isWhite) {
+
         ArrayList<String> moves = new ArrayList<>();
+        boolean canCastle = isWhite ? whiteCastleRight : blackCastleRight;
+        boolean shortRook = isWhite ? whiteShortRookMove : blackShortRookMove;
+        boolean longRook = isWhite ? whiteLongRookMove : blackLongRookMove;
+
+        if(canCastle){
+            // short castle
+            if(!checkIfContains(x+1,y,isWhite)[0] && !checkIfContains(x+2,y,isWhite)[0] && shortRook){
+                moves.add((x+2) + "," + y + ",c");
+            }
+            if(!checkIfContains(x-1,y,isWhite)[0] && !checkIfContains(x-2,y,isWhite)[0] && !checkIfContains(x-3,y,isWhite)[0] && longRook){
+                moves.add((x-3) + "," + y + ",c");
+
+            }
+        }
 
         int[] dx = {1, -1, 0, 0, 1, -1, 1, -1};
         int[] dy = {0, 0, 1, -1, 1, -1, -1, 1};
@@ -440,6 +473,57 @@ public class pieceLocationHandler {
         }
 
         return moves;
+    }
+
+    private final String[] rookLocations = {"7,7,s,w","0,7,l,w","0,0,l,b","7,0,s,b"};
+    public void removeRookMoveRight(int x, int y){
+        for(String s : rookLocations){
+            String[] rInfo = s.split(",");
+            int rookX = Integer.parseInt(rInfo[0]);
+            int rookY = Integer.parseInt(rInfo[1]);
+            if(rookX == x && rookY == y){
+                System.out.println(s);
+                if(rInfo[2].equals("s")){
+                    if(rInfo[3].equals("w")){
+                        whiteShortRookIndx = moveIndx;
+                        whiteShortRookMove = false;
+                    }
+                    else{
+                        blackShortRookIndx = moveIndx;
+                        blackShortRookMove = false;
+                    }
+                }
+                else{
+                    if(rInfo[3].equals("w")){
+                        whiteLongRookIndx = moveIndx;
+                        whiteLongRookMove = false;
+                    }
+                    else{
+                        blackShortRookIndx = moveIndx;
+                        blackShortRookMove = false;
+                    }
+                }
+            }
+        }
+    }
+
+    public void removeCastlingRight(boolean isWhite){
+        System.out.println("rm cr: " +isWhite);
+        if(isWhite){
+            if(whiteCastleRight){
+                whiteCastleRight = false;
+                whiteCastleIndx = moveIndx;
+            }
+
+        }
+        else{
+            if(blackCastleRight){
+                blackCastleRight = false;
+                blackCastleIndx = moveIndx;
+            }
+
+        }
+
     }
 
     private boolean isValidMove(int x, int y) {
@@ -590,11 +674,7 @@ public class pieceLocationHandler {
 
     private void createBoardEntry(){
         if (moveIndx != boardSave.size() - 1) {
-            System.out.println("Removing old entries");
-            int to = boardSave.size();
-            for (int i = to - 1; i > moveIndx; i--) {
-                boardSave.remove(i);
-            }
+            clearIndx();
         }
         System.out.println("Saving..");
 
@@ -604,6 +684,16 @@ public class pieceLocationHandler {
 
         moveIndx ++;
         maxIndex = moveIndx;
+
+    }
+
+    public void clearIndx(){
+        System.out.println("Removing old entries");
+        int to = boardSave.size();
+        for (int i = to - 1; i > moveIndx; i--) {
+            boardSave.remove(i);
+        }
+
 
     }
 
@@ -627,6 +717,13 @@ public class pieceLocationHandler {
     }
 
     public void ChangeBoard(GridPane chessPeiceBoard, ImageView[][] pieceLocations, Boolean isWhiteTurn){
+        whiteCastleRight = moveIndx <= whiteCastleIndx;
+        blackCastleRight = moveIndx <= blackCastleIndx;
+        whiteLongRookMove = moveIndx <= whiteLongRookIndx;
+        whiteShortRookMove = moveIndx <= whiteShortRookIndx;
+        blackLongRookMove = moveIndx <= blackLongRookIndx;
+        blackShortRookMove = moveIndx <= blackShortRookIndx;
+
         List<String>[] changes = getChangesNeeded();
         List<String> thingsToAdd = changes[0];
         List<String> thingsToRemove = changes[1];
