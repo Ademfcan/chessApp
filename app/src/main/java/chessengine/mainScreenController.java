@@ -12,7 +12,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 
 import java.net.URL;
@@ -24,7 +23,7 @@ public class mainScreenController implements Initializable {
 
     public boolean isWhiteTurn = true;
     Boolean peiceSelected = false;
-    // 1 = white, -1 = black x , y coords
+    // [0] = x ,[1] =  y coords [2] =( 1 = white, -1 = black)
     int[] selectedPeiceInfo = {0, 0, 0};
 
     List<String> oldHighights = null;
@@ -79,12 +78,19 @@ public class mainScreenController implements Initializable {
     @FXML
     StackPane barContainer;
 
+    @FXML
+    Label victoryLabel;
+
     pieceLocationHandler peiceHandler;
+
+    private boolean GameOver = false;
+
+    private int gameEndIndx = 1000000;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         chessPieceBoard.setMouseTransparent(true);
-        peiceHandler = new pieceLocationHandler();
+        peiceHandler = new pieceLocationHandler(GameOver);
         barContainer.prefHeightProperty().bind(chessPieceBoard.heightProperty());
         whiteadvantage.heightProperty().bind(chessPieceBoard.heightProperty().divide(2));
         blackadvantage.heightProperty().bind(chessPieceBoard.heightProperty().divide(2));
@@ -114,10 +120,11 @@ public class mainScreenController implements Initializable {
         LeftButton.setOnMouseClicked(e -> {
             if(peiceHandler.moveIndx >= 0){
                 peiceHandler.updateMoveIndex(-1);
+                GameOver = peiceHandler.moveIndx >= gameEndIndx;
                 peiceHandler.ChangeBoard(chessPieceBoard,peicesAtLocations,isWhiteTurn);
                 saveIndicator.setText((peiceHandler.moveIndx + 1) + "/" + (peiceHandler.maxIndex+1));
                 setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
-
+                unselectEveryThing();
 
             }
 
@@ -127,9 +134,11 @@ public class mainScreenController implements Initializable {
         RightButton.setOnMouseClicked(e -> {
             if(peiceHandler.moveIndx < peiceHandler.maxIndex){
                 peiceHandler.updateMoveIndex(1);
+                GameOver = peiceHandler.moveIndx >= gameEndIndx;
                 peiceHandler.ChangeBoard(chessPieceBoard,peicesAtLocations,isWhiteTurn);
                 saveIndicator.setText((peiceHandler.moveIndx + 1) + "/" + (peiceHandler.maxIndex+1));
                 setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
+                unselectEveryThing();
 
 
             }
@@ -138,10 +147,13 @@ public class mainScreenController implements Initializable {
         reset.setOnMouseClicked(e ->{
             if(peiceHandler.moveIndx != -1){
                 peiceHandler.moveIndx = -1;
+                GameOver = false;
                 peiceHandler.ChangeBoard(chessPieceBoard,peicesAtLocations,isWhiteTurn);
                 saveIndicator.setText("0/0");
                 peiceHandler.clearIndx();
                 setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
+                unselectEveryThing();
+
             }
         });
 
@@ -150,12 +162,17 @@ public class mainScreenController implements Initializable {
 
     private void setEvalBar(Label whiteEval, Label blackEval, Rectangle whiteBar, Rectangle blackBar, double advantage){
         double barModPercent = passThroughAsymptote(Math.abs(advantage))/5;
-        DecimalFormat decimalFormat = new DecimalFormat("#.#");
+        DecimalFormat decimalFormat = new DecimalFormat("0.0");
         System.out.println(advantage);
-        whiteEval.setText("Helloooo");
         if(advantage >= 0){
             // white advantage or equal position
-            whiteEval.setText(decimalFormat.format(advantage));
+            if(advantage < 1000000){
+                whiteEval.setText(decimalFormat.format(advantage));
+            }
+            else{
+                whiteEval.setText("M");
+
+            }
             blackEval.setText("");
             whiteBar.heightProperty().bind(chessPieceBoard.heightProperty().divide(2).add(chessPieceBoard.heightProperty().divide(2).multiply(barModPercent)));
             blackBar.heightProperty().bind(chessPieceBoard.heightProperty().divide(2).multiply(1-barModPercent));
@@ -163,7 +180,13 @@ public class mainScreenController implements Initializable {
         }
         else{
             System.out.println("here");
-            blackEval.setText(decimalFormat.format(advantage));
+            if(advantage > -1000000){
+                blackEval.setText(decimalFormat.format(advantage));
+            }
+            else{
+                blackEval.setText("M");
+
+            }
             whiteEval.setText("");
             blackBar.heightProperty().bind(chessPieceBoard.heightProperty().divide(2).add(chessPieceBoard.heightProperty().divide(2).multiply(barModPercent)));
             whiteBar.heightProperty().bind(chessPieceBoard.heightProperty().divide(2).multiply(1-barModPercent));
@@ -180,12 +203,16 @@ public class mainScreenController implements Initializable {
 
     public void unselectEveryThing()
     {
+        if(peiceSelected){
+            removeHiglight(selectedPeiceInfo[0],selectedPeiceInfo[1]);
+        }
         peiceSelected = false;
         if(oldHighights != null){
             for(String s : oldHighights){
                 String[] coords = s.split(",");
                 int a = Integer.parseInt(coords[0]);
                 int b = Integer.parseInt(coords[1]);
+
                 removeHiglight(a,b);
             }
         }
@@ -327,13 +354,13 @@ public class mainScreenController implements Initializable {
             int y = Integer.parseInt(xy[1]);
             //System.out.println("X: " + x);
             //System.out.println("Y: " + y);
-            if (event.getButton() == MouseButton.PRIMARY) {
+            if (event.getButton() == MouseButton.PRIMARY && !GameOver) {
 
                 boolean[] boardInfo = peiceHandler.checkIfContains(x, y);
                 //System.out.println("IsHit:" + boardInfo[0] + " isWhite: " + boardInfo[1]);
                 // possible move
                 //System.out.println("PrevPeice Selected: " + peiceSelected);
-
+                System.out.println(GameOver);
                 if (peiceSelected) {
                     boolean prevPeiceClr = (selectedPeiceInfo[2] > 0);
                     int oldX = selectedPeiceInfo[0];
@@ -351,6 +378,19 @@ public class mainScreenController implements Initializable {
                                 int a = Integer.parseInt(coords[0]);
                                 int b = Integer.parseInt(coords[1]);
                                 removeHiglight(a,b);
+                            }
+                            // check if rook move off starting square
+                            if(oldX == 7 && oldY == 7){
+                                peiceHandler.removeRookMoveRight(7,7);
+                            }
+                            else if(oldX == 0 && oldY == 7){
+                                peiceHandler.removeRookMoveRight(0,7);
+                            }
+                            else if(oldX == 0 && oldY == 0){
+                                peiceHandler.removeRookMoveRight(0,0);
+                            }
+                            else if(oldX == 7 && oldY == 0){
+                                peiceHandler.removeRookMoveRight(7,0);
                             }
                             if(moveInfo[1]){
                                 // performing castling move
@@ -397,6 +437,15 @@ public class mainScreenController implements Initializable {
 
                             oldHighights = null;
                             setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
+                            System.out.println(peiceHandler.isChecked(!prevPeiceClr));
+                            if(peiceHandler.isChecked(!prevPeiceClr) && !peiceHandler.isKingMovePossible(!prevPeiceClr)){
+                                victoryLabel.setText("Winner : " + (prevPeiceClr ? "White" : "Black"));
+                                setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,prevPeiceClr ? 1000000 : -1000000);
+                                GameOver = true;
+                                gameEndIndx = peiceHandler.moveIndx;
+
+                            }
+
 
                         }
 

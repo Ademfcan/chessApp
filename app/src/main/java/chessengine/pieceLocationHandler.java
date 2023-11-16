@@ -2,13 +2,8 @@ package chessengine;
 
 import javafx.geometry.HPos;
 import javafx.geometry.VPos;
-import javafx.scene.Node;
-import javafx.scene.control.Label;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.StackPane;
-import org.apache.arrow.flatbuf.Int;
 
 
 import java.util.ArrayList;
@@ -18,26 +13,26 @@ import java.util.List;
 public class pieceLocationHandler {
 
     private int[] peicesOnBoard = {8,2,2,2,1,1,8,2,2,2,1,1};
-    private long blackPawns = 0b0000000000000000000000000000000000000000000000001111111100000000L;
-    private long blackKnights = 0b0000000000000000000000000000000000000000000000000000000001000010L;
-    private long blackBishops = 0b00000000000000000000000000000000000000000000000000000000000100100L;
-    private long blackRooks = 0b0000000000000000000000000000000000000000000000000000000010000001L;
-    private long blackQueens = 0b0000000000000000000000000000000000000000000000000000000000001000L;
-    private long blackKings = 0b0000000000000000000000000000000000000000000000000000000000010000L;
+    private final long blackPawns = 0b0000000000000000000000000000000000000000000000001111111100000000L;
+    private final long blackKnights = 0b0000000000000000000000000000000000000000000000000000000001000010L;
+    private final long blackBishops = 0b00000000000000000000000000000000000000000000000000000000000100100L;
+    private final long blackRooks = 0b0000000000000000000000000000000000000000000000000000000010000001L;
+    private final long blackQueens = 0b0000000000000000000000000000000000000000000000000000000000001000L;
+    private final long blackKings = 0b0000000000000000000000000000000000000000000000000000000000010000L;
 
-    private long whitePawns = 0b0000000011111111000000000000000000000000000000000000000000000000L;
-    private long whiteKnights = 0b0100001000000000000000000000000000000000000000000000000000000000L;
-    private long whiteBishops = 0b0010010000000000000000000000000000000000000000000000000000000000L;
-    private long whiteRooks = 0b1000000100000000000000000000000000000000000000000000000000000000L;
-    private long whiteQueens = 0b0000100000000000000000000000000000000000000000000000000000000000L;
-    private long whiteKings = 0b0001000000000000000000000000000000000000000000000000000000000000L;
+    private final long whitePawns = 0b0000000011111111000000000000000000000000000000000000000000000000L;
+    private final long whiteKnights = 0b0100001000000000000000000000000000000000000000000000000000000000L;
+    private final long whiteBishops = 0b0010010000000000000000000000000000000000000000000000000000000000L;
+    private final long whiteRooks = 0b1000000100000000000000000000000000000000000000000000000000000000L;
+    private final long whiteQueens = 0b0000100000000000000000000000000000000000000000000000000000000000L;
+    private final long whiteKings = 0b0001000000000000000000000000000000000000000000000000000000000000L;
 
     // Flipped positioning
     public long[] blackPieces = {blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKings};
     public long[] whitePieces = {whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKings};
 
-    private long[] blackPiecesStart = {blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKings};
-    private long[] whitePiecesStart = {whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKings};
+    private final long[] blackPiecesStart = {blackPawns, blackKnights, blackBishops, blackRooks, blackQueens, blackKings};
+    private final long[] whitePiecesStart = {whitePawns, whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKings};
 
 
     private ArrayList<long[][]> boardSave = new ArrayList<long[][]>();
@@ -61,9 +56,12 @@ public class pieceLocationHandler {
     private int blackShortRookIndx = 1000;
     private int blackLongRookIndx = 1000;
 
+    private boolean gameOver;
 
 
-    public pieceLocationHandler() {
+
+    public pieceLocationHandler(boolean gameOver) {
+        this.gameOver = gameOver;
     }
 
     public void removePeice(boolean isWhite,int x ,int y){
@@ -98,27 +96,15 @@ public class pieceLocationHandler {
 
     public List<String> getPossibleMoves(int x, int y, boolean isWhite){
         int indx = getBoardWithPiece(x,y,isWhite);
-        switch (indx){
-            case 0:
-                return calculatePawnMoves(x,y,isWhite);
-            case 1:
-                return calculateKnightMoves(x,y,isWhite);
-
-            case 2:
-                return calculateBishopMoves(x,y,isWhite);
-
-            case 3:
-                return calculateRookMoves(x,y,isWhite);
-
-            case 4:
-                return calculateQueenMoves(x,y,isWhite);
-
-            case 5:
-                return calculateKingMoves(x,y,isWhite);
-
-
-        }
-        return null;
+        return switch (indx) {
+            case 0 -> calculatePawnMoves(x, y, isWhite);
+            case 1 -> calculateKnightMoves(x, y, isWhite, false);
+            case 2 -> calculateBishopMoves(x, y, isWhite, false);
+            case 3 -> calculateRookMoves(x, y, isWhite, false);
+            case 4 -> calculateQueenMoves(x, y, isWhite, false);
+            case 5 -> calculateKingMoves(x, y, isWhite);
+            default -> null;
+        };
     }
 
 
@@ -131,7 +117,7 @@ public class pieceLocationHandler {
 
         // Set the bit at 'to' position to 1 using a left shift.
         long setBit = 1L << to;
-        long currbitboard = 0L;
+        long currbitboard;
 
         int indx = getBoardWithPiece(OldX,OldY,isWhite);
         if(isWhite){
@@ -163,7 +149,7 @@ public class pieceLocationHandler {
     }
 
     private long createFullBoard(){
-        Long board = 0L;
+        long board = 0L;
         for(long l : whitePieces){
             board = board | l;
         }
@@ -192,41 +178,27 @@ public class pieceLocationHandler {
 
     public String getPieceType(int x, int y, Boolean isWhite){
        int indx = getBoardWithPiece(x,y,isWhite);
-       switch (indx){
-           case 0:
-               return "Pawn";
-           case 1:
-               return "Knight";
-           case 2:
-               return "Bishop";
-           case 3:
-               return "Rook";
-           case 4:
-               return "Queen";
-           case 5:
-               return "King";
-
-       }
-       return null;
+        return switch (indx) {
+            case 0 -> "Pawn";
+            case 1 -> "Knight";
+            case 2 -> "Bishop";
+            case 3 -> "Rook";
+            case 4 -> "Queen";
+            case 5 -> "King";
+            default -> null;
+        };
     }
 
     public String getPieceType(int indx){
-        switch (indx){
-            case 0:
-                return "Pawn";
-            case 1:
-                return "Knight";
-            case 2:
-                return "Bishop";
-            case 3:
-                return "Rook";
-            case 4:
-                return "Queen";
-            case 5:
-                return "King";
-
-        }
-        return null;
+        return switch (indx) {
+            case 0 -> "Pawn";
+            case 1 -> "Knight";
+            case 2 -> "Bishop";
+            case 3 -> "Rook";
+            case 4 -> "Queen";
+            case 5 -> "King";
+            default -> null;
+        };
     }
 
     public boolean[] checkIfContains(int x, int y){
@@ -246,13 +218,13 @@ public class pieceLocationHandler {
         return new boolean[]{false,false};
     }
 
-    public boolean[] checkIfContains(int x, int y, boolean isWhite){
+    public boolean checkIfContains(int x, int y, boolean isWhite){
         long board  = positionToBitboard(x,y);
         if(isWhite){
             for(long l : whitePieces){
                 long sum = board & l;
                 if(sum != 0L){
-                    return new boolean[]{true, true};
+                    return true;
                 }
             }
         }
@@ -260,11 +232,11 @@ public class pieceLocationHandler {
             for(long l : blackPieces){
                 long sum = board & l;
                 if(sum != 0L){
-                    return new boolean[]{true, false};
+                    return true;
                 }
             }
         }
-        return new boolean[]{false,false};
+        return false;
     }
 
     private int positionToBitIndex(int x, int y){
@@ -315,13 +287,13 @@ public class pieceLocationHandler {
         eatY = y + move;
         eatX1 = x + 1;
         eatX2 = x - 1;
-        if(checkIfContains(eatX1,eatY,!isWhite)[0]){
+        if(checkIfContains(eatX1,eatY,!isWhite)){
             // pawn can capture to the right
-            moves.add(Integer.toString(eatX1) + "," + Integer.toString(eatY));
+            moves.add(eatX1 + "," + eatY);
         }
-        if(checkIfContains(eatX2,eatY,!isWhite)[0]){
+        if(checkIfContains(eatX2,eatY,!isWhite)){
             // pawn can capture to the left
-            moves.add(Integer.toString(eatX2) + "," + Integer.toString(eatY));
+            moves.add(eatX2 + "," + eatY);
         }
         int depth = 1;
         if(y == pawnHome){
@@ -330,9 +302,9 @@ public class pieceLocationHandler {
         for(int i = 1; i< depth+1;i++){
             int newY = y + i*move;
             // pawns cannot eat forwards
-            if(!checkIfContains(x,newY,isWhite)[0] && !checkIfContains(x,newY,!isWhite)[0]){
+            if(!checkIfContains(x,newY,isWhite) && !checkIfContains(x,newY,!isWhite)){
                 // pawn can capture to the right
-                moves.add(Integer.toString(x) + "," + Integer.toString(newY));
+                moves.add(x + "," + newY);
             }
             else{
                 break;
@@ -342,7 +314,7 @@ public class pieceLocationHandler {
 
     }
 
-    private List<String> calculateKnightMoves(int x, int y, boolean isWhite) {
+    private List<String> calculateKnightMoves(int x, int y, boolean isWhite, boolean edgesOnly) {
         ArrayList<String> moves = new ArrayList<>();
 
         int[] dx = {1, 2, 2, 1, -1, -2, -2, -1};
@@ -351,16 +323,24 @@ public class pieceLocationHandler {
         for (int i = 0; i < 8; i++) {
             int newX = x + dx[i];
             int newY = y + dy[i];
-            if (isValidMove(newX, newY) && !checkIfContains(newX, newY, isWhite)[0]) {
-                moves.add(newX + "," + newY);
+            if (isValidMove(newX, newY) && !checkIfContains(newX, newY, isWhite)) {
+                if(edgesOnly){
+                    if(checkIfContains(newX,newY,!isWhite)){
+                        moves.add(newX + "," + newY);
+                    }
+                }
+                else{
+                    moves.add(newX + "," + newY);
+
+                }
             }
         }
 
         return moves;
     }
 
-    private List<String> calculateBishopMoves(int x, int y, boolean isWhite) {
-        ArrayList<String> moves = new ArrayList();
+    private List<String> calculateBishopMoves(int x, int y, boolean isWhite, boolean edgesOnly) {
+        ArrayList<String> moves = new ArrayList<>();
 
         int[] dx = {1, 1, -1, -1};
         int[] dy = {1, -1, 1, -1};
@@ -372,14 +352,18 @@ public class pieceLocationHandler {
                 newX += dx[i];
                 newY += dy[i];
                 if (isValidMove(newX, newY)) {
-                    boolean[] result = checkIfContains(newX, newY, isWhite);
-                    boolean[] result2 = checkIfContains(newX, newY, !isWhite);
-                    if(result2[0]){
+                    boolean result = checkIfContains(newX, newY, isWhite);
+                    boolean result2 = checkIfContains(newX, newY, !isWhite);
+                    if(result2){
                         moves.add(newX + "," + newY);
                         break;
                     }
-                    if (!result[0]) {
-                        moves.add(newX + "," + newY);
+                    if (!result) {
+                        if(!edgesOnly){
+                            moves.add(newX + "," + newY);
+                        }
+
+
                     }
                     else{
                         break;
@@ -394,8 +378,8 @@ public class pieceLocationHandler {
         return moves;
     }
 
-    private List<String> calculateRookMoves(int x, int y, boolean isWhite) {
-        ArrayList<String> moves = new ArrayList();
+    private List<String> calculateRookMoves(int x, int y, boolean isWhite, boolean edgesOnly) {
+        ArrayList<String> moves = new ArrayList<>();
 
         int[] dx = {1, -1, 0, 0};
         int[] dy = {0, 0, 1, -1};
@@ -407,14 +391,16 @@ public class pieceLocationHandler {
                 newX += dx[i];
                 newY += dy[i];
                 if (isValidMove(newX, newY)) {
-                    boolean[] result = checkIfContains(newX, newY, isWhite);
-                    boolean[] result2 = checkIfContains(newX, newY, !isWhite);
-                    if(result2[0]){
+                    boolean result = checkIfContains(newX, newY, isWhite);
+                    boolean result2 = checkIfContains(newX, newY, !isWhite);
+                    if(result2){
                         moves.add(newX + "," + newY);
                         break;
                     }
-                    if (!result[0]) {
-                        moves.add(newX + "," + newY);
+                    if (!result) {
+                        if(!edgesOnly){
+                            moves.add(newX + "," + newY);
+                        }
                     }
                     else{
                         break;
@@ -431,11 +417,11 @@ public class pieceLocationHandler {
         return moves;
     }
 
-    private List<String> calculateQueenMoves(int x, int y, boolean isWhite) {
-        ArrayList<String> moves = new ArrayList();
+    private List<String> calculateQueenMoves(int x, int y, boolean isWhite, boolean edgesOnly) {
+        ArrayList<String> moves = new ArrayList<>();
 
-        List<String> rookMoves = calculateRookMoves(x, y, isWhite);
-        List<String> bishopMoves = calculateBishopMoves(x, y, isWhite);
+        List<String> rookMoves = calculateRookMoves(x, y, isWhite,edgesOnly);
+        List<String> bishopMoves = calculateBishopMoves(x, y, isWhite,edgesOnly);
 
         moves.addAll(rookMoves);
         moves.addAll(bishopMoves);
@@ -452,10 +438,10 @@ public class pieceLocationHandler {
 
         if(canCastle){
             // short castle
-            if(!checkIfContains(x+1,y,isWhite)[0] && !checkIfContains(x+2,y,isWhite)[0] && shortRook){
+            if(!checkIfContains(x+1,y,isWhite) && !checkIfContains(x+2,y,isWhite) && shortRook && !isChecked(x+1,y,isWhite) && !isChecked(x+2,y,isWhite)){
                 moves.add((x+2) + "," + y + ",c");
             }
-            if(!checkIfContains(x-1,y,isWhite)[0] && !checkIfContains(x-2,y,isWhite)[0] && !checkIfContains(x-3,y,isWhite)[0] && longRook){
+            if(!checkIfContains(x-1,y,isWhite) && !checkIfContains(x-2,y,isWhite) && !checkIfContains(x-3,y,isWhite) && !isChecked(x-1,y,isWhite) && !isChecked(x-2,y,isWhite) && !isChecked(x-3,y,isWhite) && longRook){
                 moves.add((x-3) + "," + y + ",c");
 
             }
@@ -467,16 +453,26 @@ public class pieceLocationHandler {
         for (int i = 0; i < 8; i++) {
             int newX = x + dx[i];
             int newY = y + dy[i];
-            if (isValidMove(newX, newY) && !checkIfContains(newX, newY, isWhite)[0]) {
+            if (isValidMove(newX, newY) && !checkIfContains(newX, newY, isWhite) && !isChecked(newX,newY,isWhite)) {
                 moves.add(newX + "," + newY);
             }
         }
-
         return moves;
     }
 
+    public boolean isKingMovePossible(boolean isWhite){
+        int[] coords = parseStrCoord(getPieceCoords(isWhite ? whitePieces[5] : blackPieces[5]).get(0));
+        return !calculateKingMoves(coords[0], coords[1], isWhite).isEmpty();
+    }
+
+
+
+
+    // todo today, ischecked function, remove kingmoves if square covered, show eaten peices
+
     private final String[] rookLocations = {"7,7,s,w","0,7,l,w","0,0,l,b","7,0,s,b"};
     public void removeRookMoveRight(int x, int y){
+        System.out.println("Removing rook right at x: " + x + ", y: " + y);
         for(String s : rookLocations){
             String[] rInfo = s.split(",");
             int rookX = Integer.parseInt(rInfo[0]);
@@ -529,6 +525,45 @@ public class pieceLocationHandler {
     private boolean isValidMove(int x, int y) {
         return x >= 0 && x < 8 && y >= 0 && y < 8;
     }
+
+    public boolean isChecked(boolean isWhite){
+        List<String> kingLocation = getPieceCoords(isWhite ? whitePieces[5] : blackPieces[5]);
+        String[] coord = kingLocation.get(0).split(",");
+        int x = Integer.parseInt(coord[0]);
+        int y = Integer.parseInt(coord[1]);
+        // king coordinates
+
+        return isChecked(x,y,isWhite);
+    }
+
+    private boolean isChecked(int x, int y, boolean isWhite){
+        // general checking if a square is checked
+        List<String> possibleRookFiles = calculateRookMoves(x,y,isWhite,true);
+        List<String> possibleBishopFiles = calculateBishopMoves(x,y,isWhite,true);
+        List<String> possibleHorseJumps = calculateKnightMoves(x,y,isWhite,true);
+        for(String s : possibleRookFiles){
+            int[] coords = parseStrCoord(s);
+            String peiceType = getPieceType(coords[0],coords[1],!isWhite);
+            if(peiceType.equals("Rook") || peiceType.equals("Queen")){
+                return true;
+            }
+        }
+        for(String s : possibleHorseJumps){
+            int[] coords = parseStrCoord(s);
+            String peiceType = getPieceType(coords[0],coords[1],!isWhite);
+            if(peiceType.equals("Knight")){
+                return true;
+            }
+        }
+        for(String s : possibleBishopFiles){
+            int[] coords = parseStrCoord(s);
+            String peiceType = getPieceType(coords[0],coords[1],!isWhite);
+            if(peiceType.equals("Bishop") || peiceType.equals("Queen")){
+                return true;
+            }
+        }
+        return false;
+    }
     int[] valueMap = {1,3,3,5,9,100000};
 
     public int getSimpleEval(){
@@ -544,7 +579,7 @@ public class pieceLocationHandler {
         return eval;
 
     }
-    private double[][] pawnMap = {{1,1,1,1,1,1,1,1},
+    private final double[][] pawnMap = {{1,1,1,1,1,1,1,1},
                                 {.9f,.9f,.9f,.9f,.9f,.9f,.9f,.9f},
                                 {1,1,1,1,1,1,1,1},
                                 {1.1f,1.1f,1.1f,1.1f,1.1f,1.1f,1.1f,1.1f},
@@ -552,7 +587,7 @@ public class pieceLocationHandler {
                                 {1.25f,1.25f,1.25f,1.25f,1.25f,1.25f,1.25f,1.25f},
                                 {1.5f,1.5f,1.5f,1.5f,1.5f,1.5f,1.5f,1.5f},
                                 {2.5f,2.5f,2.5f,2.5f,2.5f,2.5f,2.5f,2.5f}};
-    private double[][] knightMap = {
+    private final double[][] knightMap = {
             {0.5f, 0.6f, 0.7f, 0.7f, 0.7f, 0.7f, 0.6f, 0.5f},
             {0.6f, 0.8f, 1.0f, 1.0f, 1.0f, 1.0f, 0.8f, 0.6f},
             {0.7f, 1.0f, 1.5f, 1.5f, 1.5f, 1.5f, 1.0f, 0.7f},
@@ -563,7 +598,7 @@ public class pieceLocationHandler {
             {0.5f, 0.6f, 0.7f, 0.7f, 0.7f, 0.7f, 0.6f, 0.5f}
     };
 
-    private double[][] bishopMap = {
+    private final double[][] bishopMap = {
             {0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f},
             {0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.2f},
             {0.2f, 1.0f, 1.5f, 2.0f, 2.0f, 1.5f, 1.0f, 0.2f},
@@ -574,7 +609,7 @@ public class pieceLocationHandler {
             {0.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.0f}
     };
 
-    private double[][] rookMap = {
+    private final double[][] rookMap = {
             {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
             {1.5f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 1.5f},
             {0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f},
@@ -585,7 +620,7 @@ public class pieceLocationHandler {
             {1.0f, 1.0f, 1.0f, 1.5f, 1.5f, 1.0f, 1.0f, 1.0f}
     };
 
-    private double[][] kingMap = {
+    private final double[][] kingMap = {
             {2.0f, 1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 2.0f},
             {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
             {1.0f, 0.0f, 0.5f, 0.5f, 0.5f, 0.5f, 0.0f, 1.0f},
@@ -596,7 +631,7 @@ public class pieceLocationHandler {
             {2.0f, 1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 2.0f}
     };
 
-    private double[][] queenMap = {
+    private final double[][] queenMap = {
             {3.0f, 4.0f, 4.0f, 5.0f, 5.0f, 4.0f, 4.0f, 3.0f},
             {3.0f, 4.0f, 4.0f, 5.0f, 5.0f, 4.0f, 4.0f, 3.0f},
             {3.0f, 4.0f, 4.0f, 5.0f, 5.0f, 4.0f, 4.0f, 3.0f},
@@ -626,7 +661,7 @@ public class pieceLocationHandler {
                 System.out.println("W: " + s);
 
                 // reverse coordinates to match white peices
-                // todo
+
                 int Normx = Integer.parseInt(coord[0]);
                 int Normy = 7-Integer.parseInt(coord[1]);
                 sum1 += valueMap[i];// * maps[i][Normx][Normy];
@@ -690,8 +725,8 @@ public class pieceLocationHandler {
     public void clearIndx(){
         System.out.println("Removing old entries");
         int to = boardSave.size();
-        for (int i = to - 1; i > moveIndx; i--) {
-            boardSave.remove(i);
+        if (to > moveIndx + 1) {
+            boardSave.subList(moveIndx + 1, to).clear();
         }
 
 
@@ -902,6 +937,10 @@ public class pieceLocationHandler {
         }
     }
 
+    private int[] parseStrCoord(String s){
+        return Arrays.stream(s.split(",")).mapToInt(Integer::parseInt).toArray();
+    }
+
     public  void printBitboard(long bitboard) {
         System.out.println("bitboard:");
         for (int row = 7; row >= 0; row--) {
@@ -922,29 +961,12 @@ public class pieceLocationHandler {
         String restOfPath ="";
         String pathStart = isWhite ? "w_" : "b_";
         switch (brdIndex) {
-            case 0:
-                restOfPath = "pawn";
-                break;
-            case 1:
-                restOfPath = "knight";
-                break;
-
-            case 2:
-                restOfPath = "bishop";
-                break;
-            case 3:
-                restOfPath = "rook";
-                break;
-
-            case 4:
-                restOfPath = "queen";
-                break;
-
-            case 5:
-                restOfPath = "king";
-                break;
-
-
+            case 0 -> restOfPath = "pawn";
+            case 1 -> restOfPath = "knight";
+            case 2 -> restOfPath = "bishop";
+            case 3 -> restOfPath = "rook";
+            case 4 -> restOfPath = "queen";
+            case 5 -> restOfPath = "king";
         }
         ImageView piece = new ImageView("/ChessAssets/ChessPieces/" + pathStart + restOfPath + "_1x_ns.png");
 

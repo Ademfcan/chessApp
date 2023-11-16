@@ -116,6 +116,7 @@
             </VBox>
             <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0">
                <children>
+                  <Label fx:id="victoryLabel" text="Label" />
                   <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
                      <children>
                         <ComboBox fx:id="bgColorSelector" prefHeight="25.0" prefWidth="68.0" promptText="Bg" />
