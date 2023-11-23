@@ -14,8 +14,12 @@ import java.io.IOException;
 public class App extends Application {
 
     public static mainScreenController controller;
-    private final String startUrl = "/FxmlFiles/MainScreen.fxml";
-    private Scene startScene;
+    private final String startUrl = "/FxmlFiles/StartScreen.fxml";
+    private final String mainUrl = "/FxmlFiles/MainScreen.fxml";
+    private static Stage mainStage;
+    private static Scene startScene;
+    private static Scene mainScene;
+
     public String getGreeting() {
         return "Hello World!";
     }
@@ -26,11 +30,16 @@ public class App extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
+        mainStage = primaryStage;
         try {
-            FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource(startUrl));
+            FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource(mainUrl));
             fxmlLoader.setControllerFactory(c -> setMainScreenController()); // Set controller factory
             Parent startRoot = fxmlLoader.load();
-            startScene = new Scene(startRoot);
+            mainScene = new Scene(startRoot);
+            FXMLLoader fxmlLoader2 = new FXMLLoader(App.class.getResource(startUrl));
+            fxmlLoader2.setControllerFactory(c -> new StartScreenController()); // Set controller factory
+            Parent startRoot2 = fxmlLoader2.load();
+            startScene = new Scene(startRoot2);
 
 
         } catch (IOException e) {
@@ -45,4 +54,17 @@ public class App extends Application {
         controller = new mainScreenController();
         return controller;
     }
+
+    public static void changeScene(boolean isStart){
+        if(isStart){
+            mainStage.setScene(startScene);
+        }
+        else{
+            mainStage.setScene(mainScene);
+        }
+    }
+
+
+
+
 }

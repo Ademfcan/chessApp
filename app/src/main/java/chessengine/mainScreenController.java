@@ -11,12 +11,14 @@ import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
 
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.List;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 public class mainScreenController implements Initializable {
@@ -81,16 +83,28 @@ public class mainScreenController implements Initializable {
     @FXML
     Label victoryLabel;
 
+    @FXML
+    HBox eatenWhites;
+
+    @FXML
+    HBox eatenBlacks;
+
+    @FXML
+    Button homeButton;
+
     pieceLocationHandler peiceHandler;
 
     private boolean GameOver = false;
 
     private int gameEndIndx = 1000000;
 
+    public boolean isVsComputer;
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         chessPieceBoard.setMouseTransparent(true);
-        peiceHandler = new pieceLocationHandler(GameOver);
+        peiceHandler = new pieceLocationHandler(GameOver, eatenWhites, eatenBlacks,chessPieceBoard);
+        System.out.println(peiceHandler.getFullEval(peiceHandler.whitePiecesC, peiceHandler.blackPiecesC));
         barContainer.prefHeightProperty().bind(chessPieceBoard.heightProperty());
         whiteadvantage.heightProperty().bind(chessPieceBoard.heightProperty().divide(2));
         blackadvantage.heightProperty().bind(chessPieceBoard.heightProperty().divide(2));
@@ -116,15 +130,13 @@ public class mainScreenController implements Initializable {
         }
         changeChessBg("Traditional");
         setUpChessPieces(chessPieceBoard);
-
+        homeButton.setOnMouseClicked(e -> {
+            changeMove(0,true);
+            App.changeScene(true);
+        });
         LeftButton.setOnMouseClicked(e -> {
             if(peiceHandler.moveIndx >= 0){
-                peiceHandler.updateMoveIndex(-1);
-                GameOver = peiceHandler.moveIndx >= gameEndIndx;
-                peiceHandler.ChangeBoard(chessPieceBoard,peicesAtLocations,isWhiteTurn);
-                saveIndicator.setText((peiceHandler.moveIndx + 1) + "/" + (peiceHandler.maxIndex+1));
-                setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
-                unselectEveryThing();
+                changeMove(-1,false);
 
             }
 
@@ -133,12 +145,7 @@ public class mainScreenController implements Initializable {
 
         RightButton.setOnMouseClicked(e -> {
             if(peiceHandler.moveIndx < peiceHandler.maxIndex){
-                peiceHandler.updateMoveIndex(1);
-                GameOver = peiceHandler.moveIndx >= gameEndIndx;
-                peiceHandler.ChangeBoard(chessPieceBoard,peicesAtLocations,isWhiteTurn);
-                saveIndicator.setText((peiceHandler.moveIndx + 1) + "/" + (peiceHandler.maxIndex+1));
-                setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
-                unselectEveryThing();
+                changeMove(1,false);
 
 
             }
@@ -146,18 +153,29 @@ public class mainScreenController implements Initializable {
 
         reset.setOnMouseClicked(e ->{
             if(peiceHandler.moveIndx != -1){
-                peiceHandler.moveIndx = -1;
-                GameOver = false;
-                peiceHandler.ChangeBoard(chessPieceBoard,peicesAtLocations,isWhiteTurn);
-                saveIndicator.setText("0/0");
-                peiceHandler.clearIndx();
-                setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
-                unselectEveryThing();
+                changeMove(0,true);
 
             }
         });
 
 
+    }
+
+    private void changeMove(int direction, boolean isReset){
+        if(isReset){
+            peiceHandler.moveIndx = -1;
+            peiceHandler.maxIndex = -1;
+            peiceHandler.clearIndx();
+            setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,0);
+        }
+        else{
+            peiceHandler.updateMoveIndex(direction);
+        }
+        saveIndicator.setText((peiceHandler.moveIndx + 1 )+ "/" + (peiceHandler.maxIndex+1));
+        GameOver = peiceHandler.moveIndx >= gameEndIndx;
+        peiceHandler.ChangeBoard(peicesAtLocations,isWhiteTurn, peiceHandler.whitePiecesC, peiceHandler.blackPiecesC);
+        setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.miniMax(peiceHandler.whitePiecesC, peiceHandler.blackPiecesC,4,Double.MIN_VALUE,Double.MAX_VALUE,isWhiteTurn));
+        unselectEveryThing();
     }
 
     private void setEvalBar(Label whiteEval, Label blackEval, Rectangle whiteBar, Rectangle blackBar, double advantage){
@@ -343,7 +361,74 @@ public class mainScreenController implements Initializable {
         }
     }
 
+    private void MoveAPeice(int oldX, int oldY, int x, int y, boolean isEating, boolean prevPeiceClr,boolean isCastle,boolean isComputerMove){
+        boolean[] moveInfo = new boolean[]{false,false};
+        if(!isComputerMove){
+           moveInfo = checkIfMovePossible(oldHighights,x,y);
+        }
+        if(isComputerMove || moveInfo[0]){
+            if(!isComputerMove){
+                for(String s : oldHighights){
+                    String[] coords = s.split(",");
+                    int a = Integer.parseInt(coords[0]);
+                    int b = Integer.parseInt(coords[1]);
+                    removeHiglight(a,b);
+                }
+            }
+            // check if rook move off starting square
+            if(oldX == 7 && oldY == 7){
+                peiceHandler.removeRookMoveRight(7,7);
+            }
+            else if(oldX == 0 && oldY == 7){
+                peiceHandler.removeRookMoveRight(0,7);
+            }
+            else if(oldX == 0 && oldY == 0){
+                peiceHandler.removeRookMoveRight(0,0);
+            }
+            else if(oldX == 7 && oldY == 0){
+                peiceHandler.removeRookMoveRight(7,0);
+            }
+            if(isCastle || moveInfo[1]){
+                // performing castling move
+                int jump = x == 6? 1 : -1;
+                peiceHandler.removeRookMoveRight(x+jump, y);
+                peiceHandler.movePiece(prevPeiceClr,x+jump,y,x-jump,y,true,false, peiceHandler.whitePiecesC, peiceHandler.blackPiecesC);
+                peicesAtLocations[x-jump][y] = peicesAtLocations[x+jump][y];
+                GridPane.setRowIndex(peicesAtLocations[x-jump][y],y);
+                GridPane.setColumnIndex(peicesAtLocations[x-jump][y],x-jump);
+                peicesAtLocations[x+jump][y] = null;
+                peiceHandler.removeCastlingRight(prevPeiceClr);
+                System.out.println("Castle right black: " + peiceHandler.blackCastleRight);
+                System.out.println("Short rook black: " + peiceHandler.blackShortRookMove);
 
+            }
+            if(peiceHandler.getPieceType(oldX,oldY,prevPeiceClr, peiceHandler.whitePiecesC, peiceHandler.blackPiecesC).equals("King")){
+                peiceHandler.removeCastlingRight(prevPeiceClr);
+
+            }
+
+
+
+
+
+            peiceHandler.movePiece(prevPeiceClr,oldX,oldY,x,y,isEating,false, peiceHandler.whitePiecesC, peiceHandler.blackPiecesC);
+            if(isEating){
+                // remove enemy peice
+                peiceHandler.removePeice(!prevPeiceClr,x,y,false, peiceHandler.whitePiecesC, peiceHandler.blackPiecesC);
+                chessPieceBoard.getChildren().remove(peicesAtLocations[x][y]);
+
+            }
+            removeHiglight(oldX, oldY);
+            peicesAtLocations[oldX][oldY] = null;
+
+
+
+            GridPane.setRowIndex(selectedPeice,y);
+            GridPane.setColumnIndex(selectedPeice,x);
+            peicesAtLocations[x][y] = selectedPeice;
+            peiceSelected = false;
+        }
+    }
 
     private void setUpSquareClickEvent(StackPane square) {
         square.setOnMouseClicked(event -> {
@@ -356,11 +441,10 @@ public class mainScreenController implements Initializable {
             //System.out.println("Y: " + y);
             if (event.getButton() == MouseButton.PRIMARY && !GameOver) {
 
-                boolean[] boardInfo = peiceHandler.checkIfContains(x, y);
+                boolean[] boardInfo = peiceHandler.checkIfContains(x, y,peiceHandler.whitePiecesC, peiceHandler.blackPiecesC);
                 //System.out.println("IsHit:" + boardInfo[0] + " isWhite: " + boardInfo[1]);
                 // possible move
                 //System.out.println("PrevPeice Selected: " + peiceSelected);
-                System.out.println(GameOver);
                 if (peiceSelected) {
                     boolean prevPeiceClr = (selectedPeiceInfo[2] > 0);
                     int oldX = selectedPeiceInfo[0];
@@ -371,83 +455,37 @@ public class mainScreenController implements Initializable {
                         // enemy colors or empty square
 
                         //System.out.println("Moving " + prevPeiceClr + " peice from " + oldX + "," + oldY + " to " + x + "," + y);
-                        boolean[] moveInfo = checkIfMovePossible(oldHighights,x,y);
-                        if(moveInfo[0]){
-                            for(String s : oldHighights){
-                                String[] coords = s.split(",");
-                                int a = Integer.parseInt(coords[0]);
-                                int b = Integer.parseInt(coords[1]);
-                                removeHiglight(a,b);
-                            }
-                            // check if rook move off starting square
-                            if(oldX == 7 && oldY == 7){
-                                peiceHandler.removeRookMoveRight(7,7);
-                            }
-                            else if(oldX == 0 && oldY == 7){
-                                peiceHandler.removeRookMoveRight(0,7);
-                            }
-                            else if(oldX == 0 && oldY == 0){
-                                peiceHandler.removeRookMoveRight(0,0);
-                            }
-                            else if(oldX == 7 && oldY == 0){
-                                peiceHandler.removeRookMoveRight(7,0);
-                            }
-                            if(moveInfo[1]){
-                                // performing castling move
-                                int jump = x == 6? 1 : -1;
-                                peiceHandler.removeRookMoveRight(x+jump, y);
-                                peiceHandler.movePiece(prevPeiceClr,x+jump,y,x-jump,y,true);
-                                peicesAtLocations[x-jump][y] = peicesAtLocations[x+jump][y];
-                                GridPane.setRowIndex(peicesAtLocations[x-jump][y],y);
-                                GridPane.setColumnIndex(peicesAtLocations[x-jump][y],x-jump);
-                                peicesAtLocations[x+jump][y] = null;
-                                peiceHandler.removeCastlingRight(prevPeiceClr);
-                                System.out.println("Castle right black: " + peiceHandler.blackCastleRight);
-                                System.out.println("Short rook black: " + peiceHandler.blackShortRookMove);
+                        MoveAPeice(oldX,oldY,x,y,boardInfo[0],prevPeiceClr,false,false);
 
-                            }
-                            if(peiceHandler.getPieceType(oldX,oldY,prevPeiceClr).equals("King")){
-                                peiceHandler.removeCastlingRight(prevPeiceClr);
-
-                            }
-
-
-
-
-
-                            peiceHandler.movePiece(prevPeiceClr,oldX,oldY,x,y,boardInfo[0]);
-                            if(boardInfo[0]){
-                                // remove enemy peice
-                                peiceHandler.removePeice(boardInfo[1],x,y);
-                                chessPieceBoard.getChildren().remove(peicesAtLocations[x][y]);
-
-                            }
-                            removeHiglight(oldX, oldY);
-                            peicesAtLocations[oldX][oldY] = null;
-
-
-
-                            GridPane.setRowIndex(selectedPeice,y);
-                            GridPane.setColumnIndex(selectedPeice,x);
-                            peicesAtLocations[x][y] = selectedPeice;
-                            peiceSelected = false;
-
+                        if(!isVsComputer){
                             isWhiteTurn = !isWhiteTurn;
-                            saveIndicator.setText((peiceHandler.moveIndx + 1) + "/" + (peiceHandler.maxIndex+1));
+                        }
+                        saveIndicator.setText((peiceHandler.moveIndx + 1) + "/" + (peiceHandler.maxIndex+1));
 
-                            oldHighights = null;
-                            setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.getSimpleEval());
-                            System.out.println(peiceHandler.isChecked(!prevPeiceClr));
-                            if(peiceHandler.isChecked(!prevPeiceClr) && !peiceHandler.isKingMovePossible(!prevPeiceClr)){
-                                victoryLabel.setText("Winner : " + (prevPeiceClr ? "White" : "Black"));
-                                setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,prevPeiceClr ? 1000000 : -1000000);
-                                GameOver = true;
-                                gameEndIndx = peiceHandler.moveIndx;
-
-                            }
-
+                        oldHighights = null;
+                        setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,peiceHandler.miniMax(peiceHandler.whitePiecesC, peiceHandler.blackPiecesC,4,Double.MIN_VALUE,Double.MAX_VALUE,isWhiteTurn));
+                        if(peiceHandler.isCheckmated(!prevPeiceClr, peiceHandler.whitePiecesC, peiceHandler.blackPiecesC)){
+                            victoryLabel.setText("Winner : " + (prevPeiceClr ? "White" : "Black"));
+                            setEvalBar(whiteEval,blackEval,whiteadvantage,blackadvantage,prevPeiceClr ? 1000000 : -1000000);
+                            GameOver = true;
+                            gameEndIndx = peiceHandler.moveIndx;
 
                         }
+                        if(isVsComputer){
+                            // computers move
+                            String computerMove = peiceHandler.getBestComputerMove(!isWhiteTurn);
+                            int[] coords = peiceHandler.parseStrCoord(computerMove);
+                            int Cx = coords[3];
+                            int Cy = coords[4];
+                            int ColdX = coords[0];
+                            int ColdY = coords[1];
+                            boolean isEating = peiceHandler.checkIfContains(Cy,Cy, peiceHandler.whitePiecesC, peiceHandler.blackPiecesC)[0];
+                            System.out.println(computerMove);
+                            MoveAPeice(ColdX,ColdY,Cx,Cy,isEating,false,coords.length > 5, true);
+
+                        }
+
+
 
 
                     }
@@ -474,7 +512,7 @@ public class mainScreenController implements Initializable {
                                 }
                             }
 
-                            List<String> highlightLocations = peiceHandler.getPossibleMoves(x,y,boardInfo[1]);
+                            List<String> highlightLocations = peiceHandler.getPossibleMoves(x,y,boardInfo[1], peiceHandler.whitePiecesC, peiceHandler.blackPiecesC);
                             oldHighights = highlightLocations;
                             for(String s : highlightLocations){
                                 String[] coords = s.split(",");
@@ -488,12 +526,15 @@ public class mainScreenController implements Initializable {
                         else {
                             peiceSelected = false;
 
-                            for(String s : oldHighights){
-                                String[] coords = s.split(",");
-                                int a = Integer.parseInt(coords[0]);
-                                int b = Integer.parseInt(coords[1]);
-                                removeHiglight(a,b);
+                            if(oldHighights != null){
+                                for(String s : oldHighights){
+                                    String[] coords = s.split(",");
+                                    int a = Integer.parseInt(coords[0]);
+                                    int b = Integer.parseInt(coords[1]);
+                                    removeHiglight(a,b);
+                                }
                             }
+
 
                             oldHighights = null;
                         }
@@ -506,10 +547,11 @@ public class mainScreenController implements Initializable {
                     }
                 else if(boardInfo[0]){
                     // no prev selection
+
                     if(boardInfo[1] == isWhiteTurn){
                         //System.out.println(peiceHandler.getPieceType(x,y,boardInfo[1]));
 
-                        List<String> moves = peiceHandler.getPossibleMoves(x,y,boardInfo[1]);
+                        List<String> moves = peiceHandler.getPossibleMoves(x,y,boardInfo[1], peiceHandler.whitePiecesC, peiceHandler.blackPiecesC);
                         oldHighights = moves;
                         for(String s : moves){
                             String[] coords = s.split(",");
@@ -580,7 +622,7 @@ public class mainScreenController implements Initializable {
             int b = Integer.parseInt(coords[1]);
             boolean isCastle =false;
             if(coords.length > 2){
-                 isCastle = coords[2].equals("c");
+                 isCastle = coords[2].equals("9");
             }
 
 
